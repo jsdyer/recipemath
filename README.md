@@ -60,7 +60,7 @@ CHROME_PATH=/usr/bin/google-chrome python3 tests/browser_smoke.py
 
 `refresh.py --source-file PATH_TO_OFFICIAL_ZIP` validates a previously downloaded release reproducibly. The collector downloads at most 60 MB, validates ZIP shape, joins, counts, units, numeric values and relationships before replacing any snapshot files. Download or validation failures leave the prior snapshot intact and fail CI. The offline builder validates the complete hash manifest and rejects mismatched files while preserving its prior output.
 
-`.github/workflows/pages.yml` runs on main push, PR, manual dispatch and **monthly at 12:23 UTC on day 1** (`23 12 1 * *`). Only schedule/manual runs fetch CNF; ordinary builds are offline. A complete refresh, all tests and browser checks must succeed before the source commit and Pages upload. Failed refreshes therefore preserve the last deployment. PRs never deploy. Only `dist/` is deployed, under the `/recipemath/` project path.
+`.github/workflows/pages.yml` runs on main push, PR, manual dispatch and **monthly at 12:23 UTC on day 1** (`23 12 1 * *`). Main-branch publications, scheduled and manual runs fetch CNF; pull requests and standalone builds stay offline. A complete refresh, all tests and browser checks must succeed before the source commit and Pages upload. Failed refreshes therefore preserve the last deployment. PRs never deploy. Only `dist/` is deployed, under the `/recipemath/` project path.
 
 A separate `.github/workflows/schedule-guard.yml` renews the source workflow and itself, preserving intentionally disabled workflows. It needs `actions: write`; refresh commits need `contents: write`; Pages needs `pages: write` and `id-token: write`. The repository's Pages source must be **GitHub Actions**.
 
