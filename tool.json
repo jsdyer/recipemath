@@ -3,11 +3,39 @@
   "title": "RecipeMath",
   "description": "Estimate recipe nutrition, compare ingredient swaps and save recipes privately using the complete Canadian Nutrient File.",
   "category": "money",
-  "tags": ["recipes", "nutrition", "food", "calories", "Canadian Nutrient File", "USDA"],
+  "tags": [
+    "recipes",
+    "nutrition",
+    "food",
+    "calories",
+    "Canadian Nutrient File",
+    "USDA"
+  ],
   "icon": "shopping-basket",
   "url": "/recipemath/",
   "source": "https://github.com/jsdyer/recipemath",
   "hosting": "project",
   "access": "browser",
-  "data_info": {"mode":"mixed","detail":"CNF 2026 contains 5,993 foods. Recipes stay in your browser; optional USDA searches use a protected service."}
+  "data_info": {
+    "mode": "mixed",
+    "detail": "CNF 2026 contains 5,993 foods. Recipes stay in your browser; optional USDA searches use a protected service.",
+    "cadence": "Monthly",
+    "probes": [
+      {
+        "url": "https://coolcode.ca/recipemath/data/status.json",
+        "path": [
+          "checked_at"
+        ],
+        "precision": "minute",
+        "label": "Official CNF release checked",
+        "max_age_seconds": 3888000,
+        "count_at": {
+          "path": [
+            "count"
+          ],
+          "unit": "foods"
+        }
+      }
+    ]
+  }
 }

@@ -385,9 +385,12 @@ async function search({ next = false } = {}) {
   const generation = ++searchGeneration;
   const q = $("#search").value.trim();
   detailGeneration++;
+  $("#find").disabled = false;
+  $("#more-results").disabled = false;
   if (!next) {
     shown = 40;
     fdcPage = 1;
+    fdcPages = 0;
   }
   if ($("#catalogue").value === "cnf") {
     matches = searchFoods(foods, q, $("#group").value);
@@ -405,6 +408,7 @@ async function search({ next = false } = {}) {
   }
   $("#search-status").textContent = "Searching USDA…";
   $("#find").disabled = true;
+  $("#more-results").disabled = true;
   try {
     if (!config.api_base)
       throw Error(
@@ -421,17 +425,21 @@ async function search({ next = false } = {}) {
     fdcPages = Math.min(Number(payload.totalPages) || 1, 10);
     shown = matches.length;
     $("#search-status").textContent =
-      `${Number(payload.totalHits || matches.length).toLocaleString()} USDA matches · page ${fdcPage} · retrieved ${date(response.fetched_at)}`;
+      `${Number(payload.totalHits || matches.length).toLocaleString()} USDA matches · page ${fdcPage} · retrieved ${date(response.fetched_at)}${Number(payload.totalPages) > 10 ? " · first 10 pages available; narrow your search for other foods" : ""}`;
     renderResults();
   } catch (e) {
     if (generation === searchGeneration) {
       matches = [];
+      fdcPages = 0;
       renderResults();
       $("#search-status").textContent =
         e.message + " The Canadian catalogue remains available.";
     }
   } finally {
-    if (generation === searchGeneration) $("#find").disabled = false;
+    if (generation === searchGeneration) {
+      $("#find").disabled = false;
+      $("#more-results").disabled = false;
+    }
   }
 }
 $("#find").onclick = () => search();
