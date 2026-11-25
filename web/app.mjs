@@ -12,6 +12,8 @@ import {
   searchFoods,
   fromFDC,
   csvSummary,
+  serializeRecipe,
+  parseRecipe,
 } from "./model.mjs";
 const $ = (s) => document.querySelector(s),
   $$ = (s) => [...document.querySelectorAll(s)];
@@ -40,7 +42,8 @@ let recipe = emptyRecipe(),
   detailGeneration = 0,
   fdcPage = 1,
   fdcPages = 0,
-  loadedId = null;
+  loadedId = null,
+  loadedRevision = null;
 const shards = new Map();
 let saved = [];
 function notice(message, error = false) {
@@ -382,6 +385,7 @@ function renderResults() {
     shown < matches.length ? "Show more foods" : "Load next USDA page";
 }
 async function search({ next = false } = {}) {
+  clearTimeout(debounce);
   const generation = ++searchGeneration;
   const q = $("#search").value.trim();
   detailGeneration++;
@@ -511,16 +515,22 @@ $("#manual-form").onsubmit = (e) => {
     notice(e.message, true);
   }
 };
+function readSaved() {
+  const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+  if (!Array.isArray(parsed) || parsed.length > 100)
+    throw Error(
+      "Saved recipes could not be read. Existing data has not been changed.",
+    );
+  return parsed.map((item) => ({
+    id: String(item.id),
+    saved_at: String(item.saved_at),
+    revision: String(item.revision || item.saved_at),
+    recipe: validateRecipe(item.recipe),
+  }));
+}
 function loadSaved() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
-    if (!Array.isArray(parsed) || parsed.length > 100)
-      throw Error("Invalid saved recipes.");
-    saved = parsed.map((item) => ({
-      id: String(item.id),
-      saved_at: String(item.saved_at),
-      recipe: validateRecipe(item.recipe),
-    }));
+    saved = readSaved();
   } catch (e) {
     saved = [];
     notice(
@@ -530,46 +540,76 @@ function loadSaved() {
   }
   $("#saved-count").textContent = saved.length;
 }
-function persist() {
-  const serialized = JSON.stringify(saved);
-  if (serialized.length > 3500000)
+async function mutateSaved(update) {
+  if (!navigator.locks?.request)
     throw Error(
-      "Device storage limit reached. Export and remove an old recipe first.",
+      "This browser cannot coordinate safe device saves. Export a JSON backup or use a current browser.",
     );
-  localStorage.setItem(key, serialized);
+  await navigator.locks.request(key, () => {
+    const next = update(readSaved());
+    const serialized = JSON.stringify(next);
+    if (serialized.length > 3500000)
+      throw Error(
+        "Device storage limit reached. Export and remove an old recipe first.",
+      );
+    localStorage.setItem(key, serialized);
+    saved = next;
+  });
   $("#saved-count").textContent = saved.length;
 }
-$("#save-recipe").onclick = () => {
+window.addEventListener("storage", (event) => {
+  if (event.key === key || event.key === null) {
+    loadSaved();
+    if (!$("#view-saved").hidden) renderSaved();
+  }
+});
+$("#save-recipe").onclick = async () => {
+  const button = $("#save-recipe");
+  button.disabled = true;
   try {
     const r = validNonempty();
-    const existing = saved.findIndex((x) => x.id === loadedId);
-    if (existing < 0 && saved.length >= 100)
-      throw Error(
-        "You can save up to 100 recipes. Export and remove one first.",
-      );
+    serializeRecipe(r); // Every saved recipe must also have a valid portable backup.
+    const workingRecipe = recipe;
+    const id = loadedId,
+      expectedRevision = loadedRevision;
     const entry = {
-      id: loadedId || crypto.randomUUID(),
+      id: id || crypto.randomUUID(),
+      revision: crypto.randomUUID(),
       saved_at: new Date().toISOString(),
       recipe: r,
     };
-    const before = structuredClone(saved);
-    if (existing >= 0) saved[existing] = entry;
-    else saved.push(entry);
-    try {
-      persist();
-    } catch (e) {
-      saved = before;
-      throw e;
+    await mutateSaved((latest) => {
+      const existing = latest.findIndex((x) => x.id === id);
+      if (
+        id &&
+        (existing < 0 || latest[existing].revision !== expectedRevision)
+      )
+        throw Error(
+          "This saved recipe changed or was deleted in another tab. Export your current edits before reopening the saved version.",
+        );
+      if (existing < 0 && latest.length >= 100)
+        throw Error(
+          "You can save up to 100 recipes. Export and remove one first.",
+        );
+      if (existing >= 0) latest[existing] = entry;
+      else latest.push(entry);
+      return latest;
+    });
+    if (recipe === workingRecipe) {
+      loadedId = entry.id;
+      loadedRevision = entry.revision;
     }
-    loadedId = entry.id;
     notice("Saved on this device. Export a JSON copy for a portable backup.");
   } catch (e) {
     notice(e.message, true);
+  } finally {
+    button.disabled = false;
   }
 };
-function activate(r, id = null) {
+function activate(r, id = null, revision = null) {
   recipe = validateRecipe(r);
   loadedId = id;
+  loadedRevision = revision;
   syncSettings();
   renderIngredients();
   renderNutrition();
@@ -618,22 +658,34 @@ function renderSaved() {
         )
       )
         return;
-      activate(item.recipe, item.id);
+      activate(item.recipe, item.id, item.revision);
       notice(
         "Loaded the saved food snapshots. Values are unchanged by newer source releases.",
       );
     };
-    del.onclick = () => {
+    del.onclick = async () => {
       if (!confirm(`Delete “${item.recipe.name}” from this device?`)) return;
-      const previous = saved;
-      saved = saved.filter((s) => s.id !== item.id);
+      del.disabled = true;
       try {
-        persist();
-        if (loadedId === item.id) loadedId = null;
+        await mutateSaved((latest) => {
+          const current = latest.find((x) => x.id === item.id);
+          if (current && current.revision !== item.revision)
+            throw Error(
+              "This recipe changed in another tab. Review the latest saved version before deleting it.",
+            );
+          return latest.filter((x) => x.id !== item.id);
+        });
+        if (loadedId === item.id) {
+          loadedId = null;
+          loadedRevision = null;
+        }
         renderSaved();
       } catch (e) {
-        saved = previous;
+        loadSaved();
+        renderSaved();
         notice(e.message, true);
+      } finally {
+        del.disabled = false;
       }
     };
     actions.append(open, del);
@@ -658,11 +710,7 @@ function download(contents, type, extension) {
 }
 $("#export-json").onclick = () => {
   try {
-    download(
-      JSON.stringify(validNonempty(), null, 2),
-      "application/json",
-      "json",
-    );
+    download(serializeRecipe(validNonempty()), "application/json", "json");
   } catch (e) {
     notice(e.message, true);
   }
@@ -692,7 +740,7 @@ $("#import-file").onchange = async (e) => {
   try {
     if (file.size > 2000000)
       throw Error("Choose a recipe file smaller than 2 MB.");
-    const r = validateRecipe(JSON.parse(await file.text()));
+    const r = parseRecipe(await file.text());
     if (
       recipe.ingredients.length &&
       !confirm(

@@ -322,3 +322,23 @@ export function csvSummary(recipe, mode = "serving") {
     .map((row) => row.map(safe).join(","))
     .join("\r\n");
 }
+
+const MAX_RECIPE_BYTES = 2000000;
+export function serializeRecipe(input) {
+  const data = JSON.stringify(validateRecipe(input));
+  if (new TextEncoder().encode(data).byteLength > MAX_RECIPE_BYTES)
+    throw Error(
+      "Recipe backups must be smaller than 2 MB. Reduce the number of ingredients or food portions before saving.",
+    );
+  return data;
+}
+export function parseRecipe(data) {
+  if (
+    typeof data !== "string" ||
+    new TextEncoder().encode(data).byteLength > MAX_RECIPE_BYTES
+  )
+    throw Error("Choose a recipe file smaller than 2 MB.");
+  const recipe = validateRecipe(JSON.parse(data));
+  serializeRecipe(recipe); // Normalized imports must fit the same export limit.
+  return recipe;
+}

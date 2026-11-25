@@ -5,7 +5,7 @@ A private recipe nutrition workspace at [coolcode.ca/recipemath](https://coolcod
 <!-- coolcode:guide -->
 Search for an ingredient in English or French and choose the description matching how you use it: raw, cooked, drained or another preparation. Enter grams, a weight unit or one of that food's supported portions. Add as many ingredients as you need, then set servings. For example, a 400 g dish divided into four servings has 100 g per serving; if cooking reduces it to 320 g, enter that finished weight to calculate nutrition per 100 g of the finished dish. This changes concentration, not the total nutrient estimate or cooking losses.
 
-Capture a comparison baseline before changing an ingredient, then return to Compare a swap to see the difference. Missing nutrient values remain unknown: a partial subtotal lists the ingredients without data. Save explicitly on your device, export JSON for a backup, and import it in another browser. Source values are saved with the recipe, so future data updates do not silently change it. For a branded food, use optional USDA search or enter a label's verified values per 100 g. This is an estimate for meal planning, not medical advice or a regulatory nutrition label.
+Capture a comparison baseline before changing an ingredient, then return to Compare a swap to see the difference. Missing nutrient values remain unknown: a partial subtotal lists the ingredients without data. Save explicitly on your device, export JSON for a backup, and import it in another browser. Source values are saved with the recipe, so future data updates do not silently change it. Multiple tabs merge their saved lists; conflicting edits to the same saved recipe require reopening it first. For a branded food, use optional USDA search or enter a label's verified values per 100 g. This is an estimate for meal planning, not medical advice or a regulatory nutrition label.
 <!-- /coolcode:guide -->
 
 ## Features
@@ -16,7 +16,7 @@ Capture a comparison baseline before changing an ingredient, then return to Comp
 - Whole recipe, per serving and per 100 g, with optional measured finished weight.
 - Baseline-versus-current comparison, including changed servings or final weight. Unknown differences are not fabricated.
 - Manual foods with any known per-100-g label values; blank nutrients remain missing.
-- Explicit local saves, JSON import/export, CSV nutrition summary and printing. Up to 100 ingredients per recipe and 100 locally saved recipes; imports are capped at 2 MB.
+- Explicit local saves, JSON import/export, CSV nutrition summary and printing. Up to 100 ingredients per recipe and 100 locally saved recipes; portable backups are capped at 2 MB with the same byte limit for import, export and saving. JSON is compact so a valid backup can be imported again.
 - Optional live FoodData Central lookup through a protected proxy. Canadian foods, saved recipes and manual food entry remain usable if that lookup is unavailable.
 
 ## Data provenance and calculation rules
@@ -84,4 +84,4 @@ python3 -m http.server 8000 --directory dist
 
 Tests cover CNF gram conventions and edible-only portions; missing nutrients; recipe and serving calculations; final weight; real catalogue search and every food profile; snapshot import; USDA unit/basis validation and energy selection; failed collector/build preservation; subpath loading; browser save/export/import, swaps and invalid input; mocked live USDA lookup and outages; and mobile layout. Browser artifacts are uploaded by CI for review.
 
-Recipes are stored under `coolcode:recipemath:recipes:v1` only after Save. Clearing local storage removes them; JSON exports are the backup. Inputs and imported names use DOM text, never HTML. Font files may be requested from Google Fonts and the site's common visit counter may record a visit; neither includes recipe contents.
+Recipes are stored under `coolcode:recipemath:recipes:v1` only after Save. Device saves use the Web Locks API to serialize changes across tabs and read fresh storage before every write; current browsers support this on HTTPS. If safe locking is unavailable, JSON export remains available. Same-recipe revision conflicts are reported without overwriting either tab’s work. Clearing local storage removes them; JSON exports are the backup. Inputs and imported names use DOM text, never HTML. Font files may be requested from Google Fonts and the site's common visit counter may record a visit; neither includes recipe contents.

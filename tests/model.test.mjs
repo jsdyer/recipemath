@@ -14,6 +14,8 @@ import {
   searchFoods,
   fromFDC,
   csvSummary,
+  serializeRecipe,
+  parseRecipe,
 } from "../web/model.mjs";
 const food = (nutrients = { energy: 100, protein: 10, sodium: 20 }) => ({
   id: "test:1",
@@ -204,4 +206,44 @@ test("CSV neutralizes a formula after whitespace", () => {
   const r = recipe();
   r.name = "\t=HYPERLINK(1)";
   assert.match(csvSummary(r), /'\t=HYPERLINK/);
+});
+
+test("large valid backups round-trip without pretty-print expansion", () => {
+  const r = recipe();
+  r.ingredients = Array.from({ length: 100 }, (_, i) => ({
+    food: {
+      ...food(),
+      id: `test:${i}`,
+      portions: Array.from({ length: 100 }, (_, j) => ({
+        label: "p".repeat(140) + j,
+        grams: 100,
+      })),
+    },
+    amount: 1,
+    unit: "g",
+  }));
+  const compact = serializeRecipe(r);
+  assert.ok(new TextEncoder().encode(compact).byteLength < 2000000);
+  assert.ok(
+    new TextEncoder().encode(JSON.stringify(validateRecipe(r), null, 2))
+      .byteLength > 2000000,
+  );
+  assert.deepEqual(parseRecipe(compact), validateRecipe(r));
+});
+test("backup size limits count UTF-8 bytes consistently", () => {
+  const r = recipe();
+  r.ingredients = Array.from({ length: 100 }, (_, i) => ({
+    food: {
+      ...food(),
+      id: `test:${i}`,
+      portions: Array.from({ length: 100 }, () => ({
+        label: "🍎".repeat(100),
+        grams: 100,
+      })),
+    },
+    amount: 1,
+    unit: "g",
+  }));
+  assert.throws(() => serializeRecipe(r), /2 MB/);
+  assert.throws(() => parseRecipe(JSON.stringify(r)), /2 MB/);
 });

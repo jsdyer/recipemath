@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import threading
+import time
 from playwright.sync_api import sync_playwright, expect
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,8 +39,24 @@ def main():
                     page.goto(f'http://127.0.0.1:{server.server_port}/recipemath/')
                     expect(page.locator('#catalogue-count')).to_have_text('5,993 Canadian foods')
                     assert page.evaluate('localStorage.length')==0
-                    page.locator('#search').fill('banana raw');page.locator('#find').click()
-                    page.locator('.food-result').filter(has_text=re.compile(r'^Banana, raw')).click()
+                    second = page.context.new_page()
+                    second.on('dialog', lambda dialog: dialog.accept())
+                    second.route('**/assets/tool-metrics.js', lambda route: route.fulfill(status=200, body=''))
+                    second.goto(f'http://127.0.0.1:{server.server_port}/recipemath/')
+                    expect(second.locator('#catalogue-count')).to_have_text('5,993 Canadian foods')
+                    def slow_shard(route):
+                        response = route.fetch()
+                        time.sleep(0.35)
+                        route.fulfill(response=response)
+                    page.route('**/data/foods-*.json', slow_shard, times=1)
+                    # Trigger typing, explicit search and selection in one turn: the old debounce
+                    # would invalidate the selection before the delayed source response returned.
+                    page.evaluate("""() => {
+                      const input = document.querySelector('#search');
+                      input.value = 'banana raw'; input.dispatchEvent(new Event('input', {bubbles:true}));
+                      document.querySelector('#find').click();
+                      [...document.querySelectorAll('.food-result')].find(b => b.firstChild.textContent === 'Banana, raw').click();
+                    }""")
                     expect(page.locator('#food-detail')).to_be_visible()
                     page.locator('#add-amount').fill('200');page.locator('#add-ingredient').click()
                     expect(page.locator('.ingredient')).to_have_count(1)
@@ -64,7 +81,33 @@ def main():
                     page.locator('#servings').fill('2')
                     assert page.evaluate('localStorage.length')==0
                     page.locator('#save-recipe').click()
+                    expect(page.locator('#notice')).to_contain_text('Saved on this device')
                     assert len(json.loads(page.evaluate("localStorage.getItem('coolcode:recipemath:recipes:v1')")))==1
+                    # A tab opened before the first save must merge fresh storage, not erase it.
+                    second.locator('.manual summary').click()
+                    second.locator('#manual-name').fill('Second tab ingredient')
+                    second.locator('#manual-energy').fill('100')
+                    second.locator('#manual-form button').click(); second.locator('#add-ingredient').click()
+                    second.locator('#recipe-name').fill('Separate dinner')
+                    second.locator('#save-recipe').click()
+                    expect(second.locator('#notice')).to_contain_text('Saved on this device')
+                    stored=json.loads(page.evaluate("localStorage.getItem('coolcode:recipemath:recipes:v1')"))
+                    assert {entry['recipe']['name'] for entry in stored} == {'Banana breakfast','Separate dinner'}
+                    # Loading one recipe in both tabs must detect an intervening saved revision.
+                    second.locator('[data-view="saved"]').click()
+                    second.locator('.saved-item').filter(has_text='Banana breakfast').get_by_role('button',name='Open',exact=True).click()
+                    page.locator('#save-recipe').click()
+                    expect(page.locator('#save-recipe')).to_be_enabled()
+                    second.locator('#recipe-name').fill('Conflicting edit')
+                    second.locator('#save-recipe').click()
+                    expect(second.locator('#notice')).to_contain_text('changed or was deleted in another tab')
+                    stored=json.loads(page.evaluate("localStorage.getItem('coolcode:recipemath:recipes:v1')"))
+                    assert {entry['recipe']['name'] for entry in stored} == {'Banana breakfast','Separate dinner'}
+                    second.close()
+                    page.locator('[data-view="saved"]').click()
+                    page.locator('.saved-item').filter(has_text='Separate dinner').get_by_role('button',name='Delete',exact=True).click()
+                    expect(page.locator('.saved-item')).to_have_count(1)
+                    page.locator('[data-view="recipe"]').click()
                     with page.expect_download() as download_info:page.locator('#export-json').click()
                     download=download_info.value;download_path=Path(temporary)/'recipe.json';download.save_as(download_path)
                     exported=json.loads(download_path.read_text());assert exported['ingredients'][0]['food']['source']=='CNF 2026'
@@ -113,7 +156,7 @@ def main():
                     page.screenshot(path=str(screenshots/'failure.png'),full_page=True)
                     raise
                 browser.close()
-            print('Browser checks passed: full CNF, calculations, saved snapshots, import/export, missing nutrients, USDA contract/outage, safe text, subpath and mobile')
+            print('Browser checks passed: full CNF, calculations, saved snapshots, import/export, missing nutrients, USDA contract/outage, safe text, subpath, slow sources, cross-tab saves and mobile')
         finally:server.shutdown()
 
 if __name__=='__main__':main()
