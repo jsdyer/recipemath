@@ -1,16 +1,13 @@
 {
-  "id": "coolcode-tool-template",
-  "title": "CoolCode Tool Starter",
-  "description": "A browser-only example that trims lines and removes exact duplicates.",
-  "category": "security",
-  "tags": ["text", "lines", "duplicates"],
-  "icon": "scan-search",
-  "url": "/coolcode-tool-template/",
-  "source": "https://github.com/jsdyer/coolcode-tool-template",
+  "id": "recipemath",
+  "title": "RecipeMath",
+  "description": "Estimate recipe nutrition, compare ingredient swaps and save recipes privately using the complete Canadian Nutrient File.",
+  "category": "money",
+  "tags": ["recipes", "nutrition", "food", "calories", "Canadian Nutrient File", "USDA"],
+  "icon": "shopping-basket",
+  "url": "/recipemath/",
+  "source": "https://github.com/jsdyer/recipemath",
   "hosting": "project",
   "access": "browser",
-  "data_info": {
-    "mode": "local",
-    "detail": "The browser reads the text you paste and compares its lines."
-  }
+  "data_info": {"mode":"mixed","detail":"CNF 2026 contains 5,993 foods. Recipes stay in your browser; optional USDA searches use a protected service."}
 }

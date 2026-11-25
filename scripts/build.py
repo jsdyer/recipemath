@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build a browser tool using Python's standard library; no network required."""
 from html import escape
+from hashlib import sha256
 import json
 from pathlib import Path
 import re
@@ -42,8 +43,29 @@ def metadata(root=ROOT):
     return tool
 
 
+def validate_snapshot(root):
+    data = root / 'web/data'
+    status = json.loads((data / 'status.json').read_text())
+    index = json.loads((data / 'index.json').read_text())
+    if status['count'] != len(index['foods']) or index['food_count'] != status['count'] or status['count'] < 5000:
+        raise ValueError('Invalid CNF catalogue count')
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', status['checked_at']):
+        raise ValueError('Invalid source check timestamp')
+    for name, digest in status['files'].items():
+        if not re.fullmatch(r'(?:index|foods-\d+)\.json', name) or sha256((data / name).read_bytes()).hexdigest() != digest:
+            raise ValueError('Snapshot hash mismatch')
+    required = {'index.json'} | {f"foods-{food['shard']}.json" for food in index['foods']}
+    if set(status['files']) != required:
+        raise ValueError('Incomplete snapshot manifest')
+    config = json.loads((root / 'web/config.json').read_text())
+    base = config.get('api_base', '')
+    if base and (urlsplit(base).scheme != 'https' or not urlsplit(base).hostname or urlsplit(base).username or '?' in base or '#' in base):
+        raise ValueError('API base must be a public HTTPS origin')
+
+
 def build(root=ROOT):
     tool = metadata(root)
+    validate_snapshot(root)
     output = root / "dist"
     if output.is_symlink():
         raise ValueError("dist must not be a symlink")

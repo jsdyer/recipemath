@@ -30,7 +30,7 @@ class BuildTests(unittest.TestCase):
         self.assertIn('&lt;img', page)
         self.assertNotIn('<img', page)
         self.assertNotIn('{{', page)
-        self.assertIn('href="./style.css"', page)
+        self.assertIn('href="styles.css"', page)
         self.assertFalse((self.root / "dist/private.txt").exists())
         self.assertTrue((self.root / "dist/.nojekyll").exists())
 
@@ -64,6 +64,14 @@ class BuildTests(unittest.TestCase):
         self.edit(access="install")
         with self.assertRaisesRegex(ValueError, "immediately usable"):
             metadata(self.root)
+
+    def test_bad_snapshot_does_not_replace_good_build(self):
+        build(self.root)
+        existing = (self.root / 'dist/index.html').read_bytes()
+        (self.root / 'web/data/foods-0.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+            build(self.root)
+        self.assertEqual((self.root / 'dist/index.html').read_bytes(), existing)
 
     def test_failed_build_keeps_existing_output(self):
         build(self.root)

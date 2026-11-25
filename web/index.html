@@ -1,34 +1,288 @@
 <!doctype html>
-<html lang="en-CA">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="{{DESCRIPTION}}">
-  <title>{{TITLE}} · CoolCode</title>
-  <link rel="stylesheet" href="./style.css">
-  <script type="module" src="./app.mjs"></script>
-  {{VISIT_COUNTER}}
-</head>
-<body data-tool-id="{{TOOL_ID}}">
-  <a class="skip" href="#main">Skip to content</a>
-  <header><a href="https://coolcode.ca/">← CoolCode.ca</a><a href="{{SOURCE_URL}}">Source &amp; instructions ↗</a></header>
-  <main id="main">
-    <p class="eyebrow">Browser tool starter</p>
-    <h1>{{TITLE}}</h1>
-    <p class="intro">{{DESCRIPTION}}</p>
-    <section aria-labelledby="example-title">
-      <h2 id="example-title">Clean a list</h2>
-      <p>Trim spaces, skip blank lines and remove exact duplicates. Capitalization stays distinct.</p>
-      <div class="panels">
-        <div><label for="input">Your lines</label><textarea id="input" rows="10" maxlength="100000" spellcheck="false" placeholder="Paste one item per line"></textarea></div>
-        <div><label for="output">Cleaned lines</label><textarea id="output" rows="10" readonly spellcheck="false"></textarea></div>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{TITLE}} · Private recipe nutrition</title>
+    <meta name="description" content="{{DESCRIPTION}}" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.mjs"></script>
+    {{VISIT_COUNTER}}
+  </head>
+  <body data-tool="{{TOOL_ID}}">
+    <a class="skip" href="#workspace">Skip to recipe</a>
+    <header class="site-header">
+      <a class="brand" href="https://coolcode.ca/">coolcode<span>.ca</span></a>
+      <div class="header-links">
+        <span class="privacy-dot">Recipes stay with you</span
+        ><a href="{{SOURCE_URL}}">Source code</a>
       </div>
-      <div class="actions"><button id="sample" type="button">Load example</button><button id="clear" type="button">Clear</button><button id="copy" type="button" hidden>Copy result</button></div>
-      <p id="status" role="status" aria-live="polite">Paste a list to begin.</p>
-      <noscript><p>This tool needs JavaScript to process your text. The source is available above.</p></noscript>
-    </section>
-    <aside aria-label="Privacy"><strong>Stays on your device.</strong> The browser processes your text in this tab. Reloading clears it.</aside>
-  </main>
-  <footer>Part of <a href="https://coolcode.ca/">the CoolCode collection</a>. {{ISSUE_LINK}}</footer>
-</body>
+    </header>
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">A little clarity for your kitchen</p>
+          <h1>{{TITLE}}<span>Know what goes into it.</span></h1>
+          <p class="intro">
+            Build any recipe. See nutrition per serving, weigh your finished
+            dish, and compare a swap before you cook.
+          </p>
+        </div>
+        <div class="catalogue-note">
+          <span class="leaf" aria-hidden="true">✳</span
+          ><strong id="catalogue-count">Canadian food catalogue</strong
+          ><span id="catalogue-date">Loading source details…</span
+          ><a href="#sources" data-view-link="sources"
+            >See sources &amp; limitations ↗</a
+          >
+        </div>
+      </section>
+      <nav class="tabs" aria-label="Workspace">
+        <button data-view="recipe" class="active" aria-current="page">
+          Recipe workspace</button
+        ><button data-view="compare">Compare a swap</button
+        ><button data-view="saved">
+          My saved recipes <span id="saved-count">0</span></button
+        ><button data-view="sources">Sources &amp; notes</button>
+      </nav>
+      <p id="notice" class="notice" role="status" hidden></p>
+      <section id="view-recipe" class="view">
+        <div class="workspace" id="workspace">
+          <aside class="finder panel">
+            <div class="section-heading">
+              <span class="step">01</span>
+              <div>
+                <h2>Find an ingredient</h2>
+                <p>Match the food and how it was prepared.</p>
+              </div>
+            </div>
+            <label for="search">Food name <span>English or French</span></label>
+            <div class="search-line">
+              <input
+                id="search"
+                type="search"
+                placeholder="Try oats, banana, chickpeas…"
+                autocomplete="off"
+              /><button id="find" class="primary">Search</button>
+            </div>
+            <div class="filter-grid">
+              <label
+                >Catalogue<select id="catalogue">
+                  <option value="cnf">Canada · CNF 2026</option>
+                  <option value="fdc">USDA · live search</option>
+                </select></label
+              ><label id="group-label"
+                >Food group<select id="group">
+                  <option value="">All food groups</option>
+                </select></label
+              >
+            </div>
+            <p id="search-status" class="muted" role="status">
+              Loading the full Canadian catalogue…
+            </p>
+            <div id="search-results" class="search-results"></div>
+            <button id="more-results" class="quiet" hidden>
+              Show more foods
+            </button>
+            <section id="food-detail" class="food-detail" hidden></section>
+            <details class="manual">
+              <summary>Can't find it? Enter a food label</summary>
+              <p class="muted">
+                Enter values per 100 g. Leave unknown nutrients blank. Convert a
+                serving label to 100 g first.
+              </p>
+              <form id="manual-form">
+                <label
+                  >Food name<input
+                    id="manual-name"
+                    required
+                    maxlength="500"
+                    placeholder="Your ingredient or brand"
+                /></label>
+                <div id="manual-nutrients" class="manual-grid"></div>
+                <button class="secondary">Use this food</button>
+              </form>
+            </details>
+          </aside>
+          <div class="recipe-area">
+            <section class="panel recipe-editor">
+              <div class="section-heading">
+                <span class="step">02</span>
+                <div>
+                  <h2>Your recipe</h2>
+                  <p>Edible weights only, without packaging or bones.</p>
+                </div>
+                <button id="new-recipe" class="quiet small">New recipe</button>
+              </div>
+              <label for="recipe-name">Recipe name</label
+              ><input id="recipe-name" maxlength="160" value="My recipe" />
+              <div class="recipe-settings">
+                <label
+                  >Servings<input
+                    id="servings"
+                    type="number"
+                    min="0.01"
+                    max="1000"
+                    step="any"
+                    value="4" /></label
+                ><label
+                  >Finished dish weight <span>Optional, grams</span
+                  ><input
+                    id="final-weight"
+                    type="number"
+                    min="0.01"
+                    max="10000000"
+                    step="any"
+                    placeholder="Weigh after cooking"
+                /></label>
+              </div>
+              <div id="ingredients"></div>
+              <p id="recipe-error" class="error" role="alert" hidden></p>
+              <div class="recipe-footer">
+                <span id="weight-summary">Start by adding an ingredient.</span
+                ><button id="save-recipe" class="secondary">
+                  Save on this device
+                </button>
+              </div>
+            </section>
+            <section class="panel nutrition">
+              <div class="section-heading">
+                <span class="step">03</span>
+                <div>
+                  <h2>The nutrition picture</h2>
+                  <p>Estimates, with gaps made visible.</p>
+                </div>
+              </div>
+              <div class="basis" aria-label="Nutrition basis">
+                <button data-basis="serving" class="active">Per serving</button
+                ><button data-basis="recipe">Whole recipe</button
+                ><button data-basis="100g">Per 100 g</button>
+              </div>
+              <div id="nutrition-output"></div>
+              <p class="fine-print" id="weight-note">
+                Cooking changes water and may change nutrients. A finished
+                weight changes the per-100-g estimate only; it cannot account
+                for nutrients lost or retained during cooking.
+              </p>
+              <div class="export-actions">
+                <button id="export-json" class="quiet">
+                  Export recipe JSON</button
+                ><button id="export-csv" class="quiet">
+                  Export nutrition CSV</button
+                ><button id="print" class="quiet">Print</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+      <section id="view-compare" class="view" hidden>
+        <div class="panel wide-panel">
+          <p class="eyebrow">Make a considered swap</p>
+          <h2>Keep a baseline, then change your recipe.</h2>
+          <p>
+            Capture the current recipe, return to the workspace and replace any
+            ingredient or quantity. This comparison uses your chosen nutrition
+            basis and each recipe's own servings and finished weight.
+          </p>
+          <button id="set-baseline" class="primary">
+            Capture current recipe as baseline</button
+          ><button class="quiet" data-view-link="recipe">
+            Return to recipe
+          </button>
+          <p id="baseline-label" class="muted">No baseline yet.</p>
+          <div id="comparison"></div>
+        </div>
+      </section>
+      <section id="view-saved" class="view" hidden>
+        <div class="panel wide-panel">
+          <p class="eyebrow">Your kitchen notebook</p>
+          <h2>Saved on this device.</h2>
+          <p>
+            Recipes are stored only when you choose Save. Export a JSON copy to
+            keep a backup or move to another browser. Clearing browser storage
+            removes saved recipes.
+          </p>
+          <label class="file-button"
+            >Import a RecipeMath JSON file<input
+              id="import-file"
+              type="file"
+              accept="application/json,.json"
+          /></label>
+          <div id="saved-list"></div>
+        </div>
+      </section>
+      <section id="view-sources" class="view" hidden>
+        <div class="panel wide-panel prose">
+          <p class="eyebrow">Good numbers need context</p>
+          <h2>Sources, privacy &amp; limitations</h2>
+          <h3>Canadian Nutrient File 2026</h3>
+          <p id="source-details">Loading source details…</p>
+          <p>
+            The complete CNF 2026 release contains average values for 5,993
+            foods. Food descriptions distinguish raw, cooked, drained and other
+            preparations. Choose the matching food; this tool does not transform
+            a raw food into a cooked food.
+          </p>
+          <p>
+            Nutrients are expressed per 100 g of edible food. CNF 2026 portion
+            conversion values are already grams. Refuse and cooking-yield
+            records are not used as servings. One official record (food 1728,
+            measure 1116) has no measure label and is omitted; that food remains
+            usable by weight.
+          </p>
+          <p>
+            <a
+              href="https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-about-us.html"
+              >Health Canada: CNF documentation</a
+            >
+            ·
+            <a href="https://open.canada.ca/en/open-government-licence-canada"
+              >Open Government Licence – Canada</a
+            >. Adapted from Health Canada data. This tool is not endorsed by
+            Health Canada.
+          </p>
+          <h3>USDA FoodData Central</h3>
+          <p>
+            Optional USDA searches contact a protected service. Search terms and
+            selected food IDs leave your browser; your recipe does not. Results
+            retain their FDC identifier, data type, publication date and
+            retrieval date. Branded products may differ from Canadian
+            formulations. Missing nutrients remain unknown. Branded foods
+            reported per 100 mL are not accepted without a verified weight
+            conversion; millilitres are never assumed to equal grams.
+            Per-serving label fields are never mixed with per-100-g nutrient
+            amounts.
+          </p>
+          <p>
+            <a href="https://fdc.nal.usda.gov/">USDA FoodData Central</a> ·
+            <a href="https://fdc.nal.usda.gov/api-guide/"
+              >API guide and CC0 data terms</a
+            >.
+          </p>
+          <h3>Read the estimates carefully</h3>
+          <p>
+            Missing values are not zero. A “partial” value is a subtotal for
+            ingredients with known data and lists what is missing. Serving
+            sizes, ingredient choice, product formulation and preparation affect
+            the result. Entering a finished dish weight accounts for its weight
+            in the per-100-g calculation; it does not model cooking losses or
+            nutrient retention. This is a planning tool, not medical advice or a
+            regulatory nutrition label.
+          </p>
+          <h3>Private by choice</h3>
+          <p>
+            Recipe edits stay in memory until you choose Save on this device.
+            Saved recipes contain a snapshot of each food's values so later data
+            updates do not silently alter them. JSON imports are validated and
+            do not execute code. The site may count page visits; it does not
+            send recipe contents with those counts.
+          </p>
+        </div>
+      </section>
+      <footer>
+        <span>Made for everyday decisions.</span
+        ><a href="https://coolcode.ca/">More useful tools</a>{{ISSUE_LINK}}
+      </footer>
+    </main>
+  </body>
 </html>
