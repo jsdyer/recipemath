@@ -31,7 +31,8 @@ def main():
                 if not chrome:
                     raise RuntimeError('Set CHROME_PATH to installed Google Chrome or Chromium')
                 browser = p.chromium.launch(executable_path=chrome, args=['--no-sandbox'])
-                page = browser.new_page(viewport={'width':1440,'height':1100})
+                context = browser.new_context(viewport={'width':1440,'height':1100})
+                page = context.new_page()
                 page.route('**/assets/tool-metrics.js', lambda route:route.fulfill(status=200,body=''))
                 errors=[]; page.on('pageerror',lambda error:errors.append(str(error)))
                 page.on('dialog',lambda dialog:dialog.accept())
