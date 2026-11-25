@@ -85,3 +85,8 @@ python3 -m http.server 8000 --directory dist
 Tests cover CNF gram conventions and edible-only portions; missing nutrients; recipe and serving calculations; final weight; real catalogue search and every food profile; snapshot import; USDA unit/basis validation and energy selection; failed collector/build preservation; subpath loading; browser save/export/import, swaps and invalid input; mocked live USDA lookup and outages; and mobile layout. Browser artifacts are uploaded by CI for review.
 
 Recipes are stored under `coolcode:recipemath:recipes:v1` only after Save. Device saves use the Web Locks API to serialize changes across tabs and read fresh storage before every write; current browsers support this on HTTPS. If safe locking is unavailable, JSON export remains available. Same-recipe revision conflicts are reported without overwriting either tab’s work. Clearing local storage removes them; JSON exports are the backup. Inputs and imported names use DOM text, never HTML. Font files may be requested from Google Fonts and the site's common visit counter may record a visit; neither includes recipe contents.
+
+Source publication verification: the monthly schedule, manual runs and main-branch
+code publications download and validate the official CNF release before publishing.
+Pull requests and the standalone build remain offline. A failed download preserves
+the previous published snapshot and its real check time.
